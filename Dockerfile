@@ -1,9 +1,9 @@
 ARG SQUID_VERSION=7.5
 ARG SQUID_TAG=SQUID_7_5
 ARG SQUID_TARBALL_SHA256=f6058907db0150d2f5d228482b5a9e5678920cf368ae0ccbcecceb2ff4c35106
-ARG DEBIAN_BOOKWORM_SLIM_DIGEST=sha256:8af0e5095f9964007f5ebd11191dfe52dcb51bf3afa2c07f055fc5451b78ba0e
+ARG BASE_IMAGE=debian:bookworm-slim@sha256:f06537653ac770703bc45b4b113475bd402f451e85223f0f2837acbf89ab020a
 
-FROM debian:bookworm-slim@${DEBIAN_BOOKWORM_SLIM_DIGEST} AS builder
+FROM --platform=$TARGETPLATFORM ${BASE_IMAGE} AS builder
 
 ARG SQUID_VERSION
 ARG SQUID_TAG
@@ -54,7 +54,7 @@ RUN ./configure \
   && make -j"$(nproc)" \
   && make install-strip
 
-FROM debian:bookworm-slim@${DEBIAN_BOOKWORM_SLIM_DIGEST}
+FROM --platform=$TARGETPLATFORM ${BASE_IMAGE}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \

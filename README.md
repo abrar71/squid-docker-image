@@ -2,6 +2,9 @@
 
 Public image repository for building and publishing the custom Squid container.
 
+The workflow builds `linux/amd64` and `linux/arm64` in parallel, then publishes
+multi-arch manifest tags.
+
 ## What this repo contains
 
 - `Dockerfile`: builds Squid from source and produces the runtime image.

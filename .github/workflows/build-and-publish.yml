@@ -13,12 +13,22 @@ permissions:
   packages: write
 
 env:
+  IMAGE_NAME: ghcr.io/abrar71/squid-docker-image
   SQUID_VERSION: "7.5"
   SQUID_TAG: "SQUID_7_5"
 
 jobs:
-  docker:
+  build:
+    name: Build ${{ matrix.platform }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+          - platform: linux/arm64
+            arch: arm64
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -36,26 +46,87 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build and push (single-platform by digest)
+        id: build
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: .
+          file: Dockerfile
+          platforms: ${{ matrix.platform }}
+          provenance: false
+          tags: ${{ env.IMAGE_NAME }}
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            SQUID_VERSION=${{ env.SQUID_VERSION }}
+            SQUID_TAG=${{ env.SQUID_TAG }}
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest artifact
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: digests-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Merge multi-arch manifest
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download digest artifacts
+        uses: actions/download-artifact@v4.3.0
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3.10.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5.8.0
         with:
-          images: ghcr.io/abrar71/squid-docker-image
+          images: ${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=${{ env.SQUID_VERSION }}
             type=ref,event=tag
             type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push
-        uses: docker/build-push-action@v6.18.0
-        with:
-          context: .
-          file: Dockerfile
-          push: true
-          platforms: linux/amd64,linux/arm64
-          build-args: |
-            SQUID_VERSION=${{ env.SQUID_VERSION }}
-            SQUID_TAG=${{ env.SQUID_TAG }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+      - name: Create and push multi-arch tags
+        run: |
+          set -euo pipefail
+          mapfile -t tags < <(echo "${{ steps.meta.outputs.tags }}")
+          mapfile -t digests < <(find /tmp/digests -type f -printf '%f\n')
+
+          if [[ ${#digests[@]} -eq 0 ]]; then
+            echo "no digests found"
+            exit 1
+          fi
+
+          tag_args=()
+          for tag in "${tags[@]}"; do
+            [[ -n "$tag" ]] || continue
+            tag_args+=("-t" "$tag")
+          done
+
+          image_refs=()
+          for digest in "${digests[@]}"; do
+            image_refs+=("${{ env.IMAGE_NAME }}@sha256:${digest}")
+          done
+
+          docker buildx imagetools create "${tag_args[@]}" "${image_refs[@]}"
