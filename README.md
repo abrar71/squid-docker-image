@@ -11,6 +11,7 @@ Public image repository for building and publishing the custom Squid container.
 
 The workflow publishes to:
 
+- `ghcr.io/abrar71/squid-docker-image:7.5`
 - `ghcr.io/abrar71/squid-docker-image:<tag>`
 - `ghcr.io/abrar71/squid-docker-image:sha-<commit>`
 - `ghcr.io/abrar71/squid-docker-image:latest` (for the default branch)
