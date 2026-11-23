@@ -1,7 +1,7 @@
 ARG SQUID_VERSION=7.8
 ARG SQUID_TAG=SQUID_7_8
 ARG SQUID_TARBALL_SHA256=52cd716f568faccbd3e237d77fd3518cbfe1548dfa2ebd8871b5a112e8ab0063
-ARG BASE_IMAGE=debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc
+ARG BASE_IMAGE=debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2
 
 FROM --platform=$TARGETPLATFORM ${BASE_IMAGE} AS builder
 
@@ -58,13 +58,13 @@ FROM --platform=$TARGETPLATFORM ${BASE_IMAGE}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
-    libdb5.3 \
+    libdb5.3t64 \
     libecap3 \
     libexpat1 \
     libgcc-s1 \
-    libgnutls30 \
+    libgnutls30t64 \
     libnetfilter-conntrack3 \
-    libssl3 \
+    libssl3t64 \
     libstdc++6 \
     libxml2 \
     logrotate \
