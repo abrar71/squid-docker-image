@@ -14,8 +14,8 @@ permissions:
 
 env:
   IMAGE_NAME: ghcr.io/abrar71/squid-docker-image
-  SQUID_VERSION: "7.5"
-  SQUID_TAG: "SQUID_7_5"
+  SQUID_VERSION: "7.8"
+  SQUID_TAG: "SQUID_7_8"
 
 jobs:
   build:
